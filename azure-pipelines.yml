@@ -87,7 +87,7 @@ stages:
                       Write-Host "OK: $file"
                     }
                     catch {
-                      Write-Error "Invalid JSON in $file: $($_.Exception.Message)"
+                      Write-Error "Invalid JSON in $file $($_.Exception.Message)"
                       throw
                     }
                   }
