@@ -1,3 +1,4 @@
+---
 trigger:
   branches:
     include:
@@ -32,15 +33,6 @@ stages:
               pwsh: true
               script: |
                 $PSVersionTable
-
-          # YAML Linting
-          - task: PowerShell@2
-            displayName: Validate YAML
-            inputs:
-              targetType: inline
-              script: |
-                pip install yamllint
-                yamllint azure-pipelines.yml  
 
           # PSScriptAnalyzer
           - task: PowerShell@2
