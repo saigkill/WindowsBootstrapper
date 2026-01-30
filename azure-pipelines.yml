@@ -33,6 +33,15 @@ stages:
               script: |
                 $PSVersionTable
 
+          # YAML Linting
+          - task: PowerShell@2
+            displayName: Validate YAML
+            inputs:
+              targetType: inline
+              script: |
+                pip install yamllint
+                yamllint azure-pipelines.yml  
+
           # PSScriptAnalyzer
           - task: PowerShell@2
             displayName: Run PSScriptAnalyzer
@@ -58,6 +67,14 @@ stages:
                   Write-Host "No tests folder found – skipping Pester."
                 }
 
+          # Static Code Validation
+          - task: PowerShell@2
+            displayName: Validate Script Signing
+            inputs:
+              targetType: inline
+              script: |
+                Get-AuthenticodeSignature ./bootstrap.ps1
+
           # JSON Config Validation
           - task: PowerShell@2
             displayName: Validate JSON configuration
@@ -67,8 +84,7 @@ stages:
               script: |
                 $configDir = Join-Path $PSScriptRoot "config"
                 $files = @(
-                  Join-Path $configDir "config.json",
-                  Join-Path $configDir "config.Development.json"
+                  Join-Path $configDir "config.json"                  
                 )
 
                 foreach ($file in $files) {
@@ -88,6 +104,19 @@ stages:
                   }
                 }
 
+          # Build PowerShell Module
+          - task: PowerShell@2
+            displayName: Build PowerShell Module
+            inputs:
+              targetType: inline
+              script: |
+                mkdir output
+                Copy-Item -Path modules -Destination output/modules -Recurse
+                Copy-Item -Path config -Destination output/config -Recurse
+                Copy-Item -Path external -Destination output/external -Recurse
+                Copy-Item -Path bootstrap.ps1 -Destination output/
+
+
           # Package bootstrapper output
           - task: PowerShell@2
             displayName: Prepare bootstrapper artifact
@@ -95,13 +124,18 @@ stages:
               targetType: inline
               pwsh: true
               script: |
-                New-Item -ItemType Directory -Path "$(Build.SourcesDirectory)\output" -Force | Out-Null
+                New-Item -ItemType Directory -Path "$(Build.SourcesDirectory)\output1" -Force | Out-Null
 
-                Copy-Item "$(Build.SourcesDirectory)\bootstrap.ps1" "$(Build.SourcesDirectory)\output\" -Force
-                Copy-Item "$(Build.SourcesDirectory)\version.json" "$(Build.SourcesDirectory)\output\" -Force -ErrorAction SilentlyContinue
+                Copy-Item "$(Build.SourcesDirectory)\bootstrap.ps1" "$(Build.SourcesDirectory)\output1\" -Force
+                Copy-Item "$(Build.SourcesDirectory)\version.json" "$(Build.SourcesDirectory)\output1\" -Force -ErrorAction SilentlyContinue
 
-                Copy-Item "$(Build.SourcesDirectory)\config" "$(Build.SourcesDirectory)\output\config" -Recurse -Force
-                Copy-Item "$(Build.SourcesDirectory)\modules" "$(Build.SourcesDirectory)\output\modules" -Recurse -Force
+                Copy-Item "$(Build.SourcesDirectory)\config" "$(Build.SourcesDirectory)\output1\config" -Recurse -Force
+                Copy-Item "$(Build.SourcesDirectory)\modules" "$(Build.SourcesDirectory)\output1\modules" -Recurse -Force
+                Copy-Item "$(Build.SourcesDirectory)\external" "$(Build.SourcesDirectory)\output1\external" -Recurse -Force
+
+          # Secret Scanning
+          - task: CredScan@3
+            displayName: Scan for secrets
 
           - task: PublishPipelineArtifact@1
             displayName: Publish bootstrapper artifact
