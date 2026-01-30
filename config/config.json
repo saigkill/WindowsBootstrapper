@@ -1,0 +1,113 @@
+{
+  "Variables": {
+    "GoVersion": "1.25",
+    "Timezone": "Mitteleuropäische Zeit"
+  },
+
+  "WingetApps": [
+    { "Id": "7zip.7zip", "Source": "winget" },
+    { "Id": "Amazon.Games", "Source": "winget" }
+  ],
+
+  "StoreApps": [
+    { "Id": "9WZDNCRFJ3PT", "Source": "msstore" },
+    { "Id": "9NBLGGH42THS", "Source": "msstore" }
+  ],
+
+  "DotnetWorkloads": [
+    "macos",
+    "maccatalyst",
+    "ios",
+    "maui-android",
+    "android",
+    "maui-windows",
+    "maui-ios",
+    "maui-maccatalyst",
+    "wasm-tools"
+  ],
+
+  "ChocoApps": [
+    "bat",
+    "chocolatey-compatibility.extension",
+    "chocolatey-core.extension"
+  ],
+
+  "ScoopBuckets": [
+    "main",
+    "extras"
+  ],
+
+  "ScoopApps": [
+    "nirsoft/bluescreenview",
+    "extras/conemu"
+  ],
+
+  "ExternalZips": [
+    {
+      "Name": "Sandcastle Help File Builder",
+      "Url": "https://github.com/EWSoftware/SHFB/releases/download/2026.1.20.0/SHFBInstaller_2026.1.20.0.zip",
+      "Target": "C:\\$Username\\Downloads"
+    }
+   ],
+
+  "ExternalExes": [
+    {
+        "Name": "Abelsoft FindMyFiles",
+        "Url": "https://www.abelssoft.de/FindMyFiles-Setup.exe",
+        "Arguments": "/S"
+    }
+  ],
+  "PowershellModules": [
+    "NuGet",
+    "oh-my-posh"
+  ],
+  "AppsToRemove":  [
+    "Microsoft.BingWeather",
+    "Microsoft.BingNews",
+    "Microsoft.XboxApp",
+    "Microsoft.XboxGameCallableUI",
+    "Microsoft.XboxIdentityProvider",
+    "Microsoft.MSPaint",
+    "Microsoft.Microsoft3DViewer",
+    "Microsoft.MicrosoftOfficeHub",
+    "Microsoft.MicrosoftSolitaireCollection",
+    "Microsoft.MixedReality.Portal",
+    "Microsoft.GetHelp",
+    "Microsoft.Getstarted",
+    "Microsoft.ZuneMusic",
+    "Microsoft.ZuneVideo",
+    "Microsoft.WindowsAlarms",
+    "Microsoft.WindowsCamera",
+    "Microsoft.WindowsFeedbackHub",
+    "Microsoft.WindowsMaps",
+    "Microsoft.WindowsSoundRecorder",
+    "Microsoft.People",
+    "*549981C3F5F10*"
+  ],
+  "PathesForPATH": [
+    "C:\\Users\\Sascha\\scoop\\shims",
+    "C:\\ProgramFiles\\Vim\\vim91"
+  ],
+  "ExcludeDefenderPathes": [
+    "C:\\Tools\\Scoop",
+    "C:\\Tools\\Chocolatey",
+    "C:\\Users\\Sascha\\scoop",
+    "C:\\Users\\Sascha\\workspace",
+    "C:\\Users\\Sascha\\source",
+    "C:\\Users\\Sascha\\.nuget",
+    "C:\\Users\\Sascha\\.vscode",
+    "C:\\Users\\Sascha\\.dotnet",
+    "C:\\Users\\Sascha\\.ssh",
+    "C:\\Users\\Sascha\\.azuredatastudio"
+  ],
+  "ManualSteps": [
+    "TODO",
+    "------",
+    "You have to install this:",
+    "Citavi on: https://www.citavi.com/en/download#downloadModal",
+    "GeoGebra on: https://www.geogebra.org/download",
+    "",
+    "Keep in mind, you have to do:",
+    "Anything 1"
+  ]
+}

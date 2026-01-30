@@ -1,0 +1,111 @@
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  pwshVersion: '7.4.0'
+
+stages:
+  - stage: BuildAndTest
+    displayName: Build & Test
+    jobs:
+      - job: Build_Test
+        displayName: Lint, Test, Validate, Package
+        steps:
+          - task: PowerShell@2
+            displayName: Install PowerShell Core
+            inputs:
+              targetType: inline
+              script: |
+                choco install powershell-core --version $(pwshVersion) -y
+                Write-Host "Installed PowerShell $(pwshVersion)"
+
+          - task: PowerShell@2
+            displayName: Show PowerShell Version
+            inputs:
+              targetType: inline
+              pwsh: true
+              script: |
+                $PSVersionTable
+
+          # PSScriptAnalyzer
+          - task: PowerShell@2
+            displayName: Run PSScriptAnalyzer
+            inputs:
+              targetType: inline
+              pwsh: true
+              script: |
+                Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+                Invoke-ScriptAnalyzer -Path . -Recurse -Severity Warning,Error
+
+          # Pester Tests (optional – kannst du nach und nach füllen)
+          - task: PowerShell@2
+            displayName: Run Pester tests
+            inputs:
+              targetType: inline
+              pwsh: true
+              script: |
+                Install-Module Pester -Force -Scope CurrentUser
+                if (Test-Path ".\tests") {
+                  Invoke-Pester -Path .\tests -Output Detailed
+                }
+                else {
+                  Write-Host "No tests folder found – skipping Pester."
+                }
+
+          # JSON Config Validation
+          - task: PowerShell@2
+            displayName: Validate JSON configuration
+            inputs:
+              targetType: inline
+              pwsh: true
+              script: |
+                $configDir = Join-Path $PSScriptRoot "config"
+                $files = @(
+                  Join-Path $configDir "config.json",
+                  Join-Path $configDir "config.Development.json"
+                )
+
+                foreach ($file in $files) {
+                  if (Test-Path $file) {
+                    Write-Host "Validating JSON: $file"
+                    try {
+                      $null = Get-Content $file -Raw | ConvertFrom-Json
+                      Write-Host "OK: $file"
+                    }
+                    catch {
+                      Write-Error "Invalid JSON in $file: $($_.Exception.Message)"
+                      throw
+                    }
+                  }
+                  else {
+                    Write-Host "Skipping missing config file: $file"
+                  }
+                }
+
+          # Package bootstrapper output
+          - task: PowerShell@2
+            displayName: Prepare bootstrapper artifact
+            inputs:
+              targetType: inline
+              pwsh: true
+              script: |
+                New-Item -ItemType Directory -Path "$(Build.SourcesDirectory)\output" -Force | Out-Null
+
+                Copy-Item "$(Build.SourcesDirectory)\bootstrap.ps1" "$(Build.SourcesDirectory)\output\" -Force
+                Copy-Item "$(Build.SourcesDirectory)\version.json" "$(Build.SourcesDirectory)\output\" -Force -ErrorAction SilentlyContinue
+
+                Copy-Item "$(Build.SourcesDirectory)\config" "$(Build.SourcesDirectory)\output\config" -Recurse -Force
+                Copy-Item "$(Build.SourcesDirectory)\modules" "$(Build.SourcesDirectory)\output\modules" -Recurse -Force
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish bootstrapper artifact
+            inputs:
+              targetPath: '$(Build.SourcesDirectory)/output'
+              artifact: 'windows-bootstrap'
+              publishLocation: 'pipeline'
