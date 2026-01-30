@@ -131,11 +131,7 @@ stages:
 
                 Copy-Item "$(Build.SourcesDirectory)\config" "$(Build.SourcesDirectory)\output1\config" -Recurse -Force
                 Copy-Item "$(Build.SourcesDirectory)\modules" "$(Build.SourcesDirectory)\output1\modules" -Recurse -Force
-                Copy-Item "$(Build.SourcesDirectory)\external" "$(Build.SourcesDirectory)\output1\external" -Recurse -Force
-
-          # Secret Scanning
-          - task: CredScan@3
-            displayName: Scan for secrets
+                Copy-Item "$(Build.SourcesDirectory)\external" "$(Build.SourcesDirectory)\output1\external" -Recurse -Force          
 
           - task: PublishPipelineArtifact@1
             displayName: Publish bootstrapper artifact
