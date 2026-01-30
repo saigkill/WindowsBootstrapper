@@ -110,6 +110,7 @@ stages:
                 Copy-Item -Path config -Destination output/config -Recurse
                 Copy-Item -Path external -Destination output/external -Recurse
                 Copy-Item -Path bootstrap.ps1 -Destination output/
+                Copy-Item -Path version.json -Destination output/
 
 
           # Package bootstrapper output
@@ -123,11 +124,11 @@ stages:
 
                 Copy-Item "$(Build.SourcesDirectory)\bootstrap.ps1" "$(Build.SourcesDirectory)\output1\" -Force
                 Copy-Item "$(Build.SourcesDirectory)\version.json" "$(Build.SourcesDirectory)\output1\" -Force -ErrorAction SilentlyContinue
-
                 Copy-Item "$(Build.SourcesDirectory)\config" "$(Build.SourcesDirectory)\output1\config" -Recurse -Force
                 Copy-Item "$(Build.SourcesDirectory)\modules" "$(Build.SourcesDirectory)\output1\modules" -Recurse -Force
                 Copy-Item "$(Build.SourcesDirectory)\external" "$(Build.SourcesDirectory)\output1\external" -Recurse -Force          
 
+          # Create ZIP archive
           - task: ArchiveFiles@2      
             inputs:
               rootFolderOrFile: '$(Build.SourcesDirectory)\output1'
@@ -137,6 +138,7 @@ stages:
               replaceExistingArchive: true
             displayName: 'Create ZIP'
 
+          # Publish Artifacts
           - task: PublishPipelineArtifact@1
             displayName: Publish bootstrapper artifact
             inputs:
