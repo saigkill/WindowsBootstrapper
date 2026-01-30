@@ -8,6 +8,6 @@ Describe "Add-ToSystemPath" {
         $temp = "$env:TEMP\testfolder"
         New-Item -ItemType Directory -Path $temp -Force | Out-Null
 
-        { Add-ToSystemPath -Folder $temp } | Should -Not -Throw
+        { AddToPath -Folder $temp } | Should -Not -Throw
     }
 }
