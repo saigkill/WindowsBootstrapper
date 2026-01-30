@@ -4,6 +4,9 @@ trigger:
     include:
       - main
       - develop
+  tags:
+    include:
+      - v*
 
 pool:
   vmImage: 'windows-latest'
@@ -125,9 +128,20 @@ stages:
                 Copy-Item "$(Build.SourcesDirectory)\modules" "$(Build.SourcesDirectory)\output1\modules" -Recurse -Force
                 Copy-Item "$(Build.SourcesDirectory)\external" "$(Build.SourcesDirectory)\output1\external" -Recurse -Force          
 
+          - task: ArchiveFiles@2      
+            inputs:
+              rootFolderOrFile: '$(Build.SourcesDirectory)\output1'
+              includeRootFolder: false
+              archiveType: 'zip'
+              archiveFile: '$(Build.SourcesDirectory)\output1\WindowsBootstrapper.zip'
+              replaceExistingArchive: true
+            displayName: 'Create ZIP'
+
           - task: PublishPipelineArtifact@1
             displayName: Publish bootstrapper artifact
             inputs:
-              targetPath: '$(Build.SourcesDirectory)/output'
+              targetPath: |
+                '$(Build.SourcesDirectory)\output',
+                '$(Build.SourcesDirectory)\output1\WindowsBootstrapper.zip'
               artifact: 'windows-bootstrap'
               publishLocation: 'pipeline'
