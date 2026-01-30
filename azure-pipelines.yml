@@ -99,20 +99,6 @@ stages:
                   }
                 }
 
-          # Build PowerShell Module
-          - task: PowerShell@2
-            displayName: Build PowerShell Module
-            inputs:
-              targetType: inline
-              script: |
-                mkdir output
-                Copy-Item -Path modules -Destination output/modules -Recurse
-                Copy-Item -Path config -Destination output/config -Recurse
-                Copy-Item -Path external -Destination output/external -Recurse
-                Copy-Item -Path bootstrap.ps1 -Destination output/
-                Copy-Item -Path version.json -Destination output/
-
-
           # Package bootstrapper output
           - task: PowerShell@2
             displayName: Prepare bootstrapper artifact
@@ -120,21 +106,39 @@ stages:
               targetType: inline
               pwsh: true
               script: |
-                New-Item -ItemType Directory -Path "$(Build.SourcesDirectory)\output1" -Force | Out-Null
+                New-Item -ItemType Directory -Path "$(Build.SourcesDirectory)\output" -Force | Out-Null
 
-                Copy-Item "$(Build.SourcesDirectory)\bootstrap.ps1" "$(Build.SourcesDirectory)\output1\" -Force
-                Copy-Item "$(Build.SourcesDirectory)\version.json" "$(Build.SourcesDirectory)\output1\" -Force -ErrorAction SilentlyContinue
-                Copy-Item "$(Build.SourcesDirectory)\config" "$(Build.SourcesDirectory)\output1\config" -Recurse -Force
-                Copy-Item "$(Build.SourcesDirectory)\modules" "$(Build.SourcesDirectory)\output1\modules" -Recurse -Force
-                Copy-Item "$(Build.SourcesDirectory)\external" "$(Build.SourcesDirectory)\output1\external" -Recurse -Force          
+                Copy-Item "$(Build.SourcesDirectory)\bootstrap.ps1" "$(Build.SourcesDirectory)\output\" -Force
+                Copy-Item "$(Build.SourcesDirectory)\version.json" "$(Build.SourcesDirectory)\output\" -Force -ErrorAction SilentlyContinue
+                Copy-Item "$(Build.SourcesDirectory)\config" "$(Build.SourcesDirectory)\output\config" -Recurse -Force
+                Copy-Item "$(Build.SourcesDirectory)\modules" "$(Build.SourcesDirectory)\output\modules" -Recurse -Force
+                Copy-Item "$(Build.SourcesDirectory)\external" "$(Build.SourcesDirectory)\output\external" -Recurse -Force          
+
+          # Mirror to GitHub
+          - task: Bash@3
+            inputs:
+              targetType: 'inline'
+              script: |             
+                if [ -d "WindowsBootstrapper" ]; then
+                  rm -rf "WindowsBootstrapper"
+                  echo "Das Verzeichnis 'WindowsBootstrapper' wurde gelöscht."
+                else
+                  echo "Das Verzeichnis 'WindowsBootstrapper' existiert nicht."
+                fi
+          
+                git clone --mirror https://saigkill:$(AzurePAT)@dev.azure.com/saigkill/WindowsBootstrapper/_git/WindowsBootstrapper ./WindowsBootstrapper --verbose
+                cd WindowsBootstrapper
+                git remote add github https://saigkill:$(GithubPAT)@github.com/saigkill/WindowsBootstrapper.git
+                git push github --mirror
+            displayName: 'Mirror to Github'
 
           # Create ZIP archive
           - task: ArchiveFiles@2      
             inputs:
-              rootFolderOrFile: '$(Build.SourcesDirectory)\output1'
+              rootFolderOrFile: '$(Build.SourcesDirectory)\output'
               includeRootFolder: false
               archiveType: 'zip'
-              archiveFile: '$(Build.SourcesDirectory)\output1\WindowsBootstrapper.zip'
+              archiveFile: '$(Build.SourcesDirectory)\output\WindowsBootstrapper.zip'
               replaceExistingArchive: true
             displayName: 'Create ZIP'
 
@@ -142,8 +146,6 @@ stages:
           - task: PublishPipelineArtifact@1
             displayName: Publish bootstrapper artifact
             inputs:
-              targetPath: |
-                '$(Build.SourcesDirectory)\output',
-                '$(Build.SourcesDirectory)\output1\WindowsBootstrapper.zip'
+              targetPath: '$(Build.SourcesDirectory)\output\WindowsBootstrapper.zip'
               artifact: 'windows-bootstrap'
               publishLocation: 'pipeline'
