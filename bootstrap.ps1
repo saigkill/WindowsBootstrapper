@@ -47,6 +47,11 @@ function Assert-Windows11 {
 function Remove-UnneededApps {
     Write-Log "Deleting Bloatware Apps."
 
+    if ([string]::IsNullOrWhiteSpace($config.AppsToRemove)) { 
+        Write-Log "AppsToRemove not found. Skipping." "WARN" 
+        return 
+    }
+
     foreach ($app in $config.AppsToRemove) {
         Write-Log "Removing App: $app"
         try {
@@ -144,16 +149,17 @@ function Install-WSL {
 # Go Installation (Optional)
 # -----------------------------
 function Check-InstallGo {
-    try {
-        Invoke-Optional "Install Go $config.GoVersion?" {
+
+    if ([string]::IsNullOrWhiteSpace($config.GoVersion)) { 
+        Write-Log "GoVersion not found. Skipping." "WARN" 
+        return 
+    }
+
+    Invoke-Optional "Install Go $config.GoVersion?" {
         Install-Go
-    } -DefaultYes $false    
-    }
-    catch {
-        Write-Log "Error while prompting for Go installation: $($_.Exception.Message). Check if $config.GoVersion Variable is set correctly." 'ERROR'
-    }
-    
+    } -DefaultYes $false
 }
+
 
 function Install-Go {
     Write-Log "Installing Go $config.GoVersion."
@@ -234,6 +240,10 @@ function Install-AndroidCLI {
 # Powershell Modules
 # -----------------------------
 function Import-RequiredModules {
+    if ([string]::IsNullOrWhiteSpace($config.PowershellModules)) { 
+        Write-Log "PowershellModules not found. Skipping." "WARN" 
+        return 
+    }
     foreach($module in $config.PowershellModules){        
         Write-Host "Installing module $module"
             try {
@@ -330,6 +340,10 @@ function Check-InstallDotnetTools {
 function Install-DotnetTools {
     Write-Log "Installing dotnet Tools."
     dotnet tool install --global dotnet-ef
+    if ([string]::IsNullOrWhiteSpace($config.DotnetWorkloads)) { 
+        Write-Log "DotnetWorkloads not found. Skipping." "WARN" 
+        return 
+    }
     foreach($workload in $config.DotnetWorkloads){
         try {        
             sudo dotnet workload install $workload
@@ -345,6 +359,11 @@ function Install-DotnetTools {
 # Exclude Pathes for Defender
 # -----------------------------
 function Exclude-DefenderPathes {
+    if ([string]::IsNullOrWhiteSpace($config.ExcludeDefenderPathes)) { 
+        Write-Log "ExcludeDefenderPathes not found. Skipping." "WARN" 
+        return 
+    }
+
     foreach ($path in $config.ExcludeDefenderPathes) {
         Write-Log "Adding Windows Defender Exclusions: $path"
         try {
@@ -368,7 +387,7 @@ function Sync-TimeWithServer {
         w32tm /resync /force
         w32tm /query /status
         Set-TimeZone -Name $config.Variables.Timezone
-        Write-Log "Time synchronized."
+        Write-Log "Time synchronized. Used Timezone: $config.Variables.Timezone"
     }
     catch {
         Write-Log "Error while Time-Synchronisation: $($_.Exception.Message)" 'ERROR'
@@ -429,6 +448,12 @@ function Check-WindowsUpdates {
 # -----------------------------
 function AddPathesToPATH {
     Write-Log "Adding Pathes to PATH."
+    
+    if ([string]::IsNullOrWhiteSpace($config.PathesForPATH)) { 
+        Write-Log "PathesForPATH not found. Skipping." "WARN" 
+        return 
+    }
+
     try{
         foreach($path in $config.PathesForPATH){
             Add-ToSystemPath $path
@@ -445,6 +470,11 @@ function AddPathesToPATH {
 # After Installation Notes
 # -----------------------------
 function Show-ManualSteps {
+    if ([string]::IsNullOrWhiteSpace($config.ManualApps)) { 
+        Write-Log "ManualApps not found. Skipping." "WARN" 
+        return 
+    }
+
     Write-Log "Some steps are needed after Installation:"
     $desktop = [Environment]::GetFolderPath("Desktop") 
     $outFile = Join-Path $desktop "AfterInstallation.txt" 

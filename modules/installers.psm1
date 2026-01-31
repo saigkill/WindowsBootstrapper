@@ -22,7 +22,16 @@ function Install-WingetApps {
         [Parameter(Mandatory)] 
         $Config 
     )
-
+    
+    if ([string]::IsNullOrWhiteSpace($Config.WingetApps)) { 
+        Write-Log "WingetApps not found. Skipping." "WARN" 
+        return 
+    }
+    if ([string]::IsNullOrWhiteSpace($Config.StoreApps)) { 
+        Write-Log "StoreApps not found. Skipping." "WARN" 
+        return 
+    }
+    
     if (-not (Test-Command "winget")) {
         Write-Log "winget not found – skipping Winget-Installation." 'WARN'
         return
@@ -61,6 +70,10 @@ function Install-ChocoApps {
         [Parameter(Mandatory)] 
         $Config 
     )
+    if ([string]::IsNullOrWhiteSpace($Config.ChocoApps)) { 
+        Write-Log "ChocoApps not found. Skipping." "WARN" 
+        return 
+    }
 
     if (-not (Test-Command "choco")) {
         Write-Log "Chocolatey not found – skipping Choco-Installation." 'WARN'
@@ -84,9 +97,11 @@ function Install-Scoop {
         return
     }
 
+    Write-Log "Installing Scoop in non-elevated PowerShell..." 
+    $scoopInstallCmd = 'Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force; iwr -useb get.scoop.sh | iex'
+
     try {
-        Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
-        Invoke-RestMethod -Uri "https://get.scoop.sh" | Invoke-Expression
+        Start-Process "powershell.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command $($scoopInstallCmd)" -Verb RunAsUser
         Write-Log "Scoop installed."
     }
     catch {
@@ -99,6 +114,10 @@ function Configure-Scoop {
         [Parameter(Mandatory)] 
         $Config 
     )
+    if ([string]::IsNullOrWhiteSpace($Config.ScoopApps)) { 
+        Write-Log "ScoopApps not found. Skipping." "WARN" 
+        return 
+    }
 
     if (-not (Test-Command "scoop")) {
         Write-Log "Scoop not found – skipping Scoop-Configuration." 'WARN'
@@ -135,6 +154,10 @@ function Install-FromZip {
         [Parameter(Mandatory)] 
         $Config 
     )
+    if ([string]::IsNullOrWhiteSpace($Config.ExternalZips)) { 
+        Write-Log "ExternalZips not found. Skipping." "WARN" 
+        return 
+    }
 
     foreach ($item in $Config.ExternalZips) {
         $name   = $item.Name
@@ -173,6 +196,10 @@ function Install-FromExe {
         [Parameter(Mandatory)] 
         $Config 
     )
+    if ([string]::IsNullOrWhiteSpace($Config.ExternalExes)) { 
+        Write-Log "ExternalExes not found. Skipping." "WARN" 
+        return 
+    }
 
     foreach ($item in $Config.ExternalExes) {
         $name      = $item.Name

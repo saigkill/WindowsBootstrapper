@@ -1,8 +1,12 @@
+---
 trigger:
   branches:
     include:
       - main
       - develop
+  tags:
+    include:
+      - v*
 
 pool:
   vmImage: 'windows-latest'
@@ -58,6 +62,14 @@ stages:
                   Write-Host "No tests folder found – skipping Pester."
                 }
 
+          # Static Code Validation
+          - task: PowerShell@2
+            displayName: Validate Script Signing
+            inputs:
+              targetType: inline
+              script: |
+                Get-AuthenticodeSignature ./bootstrap.ps1
+
           # JSON Config Validation
           - task: PowerShell@2
             displayName: Validate JSON configuration
@@ -67,8 +79,7 @@ stages:
               script: |
                 $configDir = Join-Path $PSScriptRoot "config"
                 $files = @(
-                  Join-Path $configDir "config.json",
-                  Join-Path $configDir "config.Development.json"
+                  Join-Path $configDir "config.json"                  
                 )
 
                 foreach ($file in $files) {
@@ -79,7 +90,7 @@ stages:
                       Write-Host "OK: $file"
                     }
                     catch {
-                      Write-Error "Invalid JSON in $file: $($_.Exception.Message)"
+                      Write-Error "Invalid JSON in $file $($_.Exception.Message)"
                       throw
                     }
                   }
@@ -99,13 +110,70 @@ stages:
 
                 Copy-Item "$(Build.SourcesDirectory)\bootstrap.ps1" "$(Build.SourcesDirectory)\output\" -Force
                 Copy-Item "$(Build.SourcesDirectory)\version.json" "$(Build.SourcesDirectory)\output\" -Force -ErrorAction SilentlyContinue
-
                 Copy-Item "$(Build.SourcesDirectory)\config" "$(Build.SourcesDirectory)\output\config" -Recurse -Force
                 Copy-Item "$(Build.SourcesDirectory)\modules" "$(Build.SourcesDirectory)\output\modules" -Recurse -Force
+                Copy-Item "$(Build.SourcesDirectory)\external" "$(Build.SourcesDirectory)\output\external" -Recurse -Force          
 
+          # Mirror to GitHub
+          - task: Bash@3
+            inputs:
+              targetType: 'inline'
+              script: |             
+                if [ -d "WindowsBootstrapper" ]; then
+                  rm -rf "WindowsBootstrapper"
+                  echo "Das Verzeichnis 'WindowsBootstrapper' wurde gelöscht."
+                else
+                  echo "Das Verzeichnis 'WindowsBootstrapper' existiert nicht."
+                fi
+          
+                git clone --mirror https://saigkill:$(AzurePAT)@dev.azure.com/saigkill/WindowsBootstrapper/_git/WindowsBootstrapper ./WindowsBootstrapper --verbose
+                cd WindowsBootstrapper
+                git remote add github https://saigkill:$(GithubPAT)@github.com/saigkill/WindowsBootstrapper.git
+                git push github --prune --all 
+                git push github --prune --tags
+            displayName: 'Mirror to Github'
+
+          # Create ZIP archive
+          - task: ArchiveFiles@2      
+            inputs:
+              rootFolderOrFile: '$(Build.SourcesDirectory)\output'
+              includeRootFolder: false
+              archiveType: 'zip'
+              archiveFile: '$(Build.SourcesDirectory)\output\WindowsBootstrapper.zip'
+              replaceExistingArchive: true
+            displayName: 'Create ZIP'
+
+          # Publish Artifacts
           - task: PublishPipelineArtifact@1
             displayName: Publish bootstrapper artifact
             inputs:
-              targetPath: '$(Build.SourcesDirectory)/output'
+              targetPath: '$(Build.SourcesDirectory)\output\WindowsBootstrapper.zip'
               artifact: 'windows-bootstrap'
               publishLocation: 'pipeline'
+
+# ---------------------------------------------------------
+#  STAGE: RELEASE (nur bei Tags)
+# ---------------------------------------------------------
+  - stage: Release
+    displayName: "Create GitHub Release"
+    condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/')
+    jobs:
+    - job: ReleaseJob
+      pool:
+        vmImage: 'windows-latest'
+      steps:
+
+      - download: current
+        artifact: windows-bootstrap      
+    
+      - task: GitHubRelease@1
+        inputs:
+          gitHubConnection: 'github.com_saigkill'
+          repositoryName: 'saigkill/WindowsBootstrapper'
+          action: 'create'
+          tagSource: 'gitTag'
+          assets: $(Pipeline.Workspace)/windows-bootstrap/*.zip
+          title: 'Release $(Build.SourceBranchName)'
+          isDraft: false
+          isPreRelease: false
+        displayName: 'Create GitHub Release'

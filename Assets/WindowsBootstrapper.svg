@@ -1,0 +1,43 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Hintergrund (hell, abgerundetes Quadrat) -->
+  <rect x="16" y="16" width="480" height="480" rx="96" ry="96" fill="#F5F7FB"/>
+
+  <!-- Windows-Kachel (leicht nach innen versetzt) -->
+  <g transform="translate(96,96)">
+    <!-- Kachel-Hintergrund -->
+    <rect x="0" y="0" width="320" height="320" rx="40" ry="40" fill="#0A63C9"/>
+
+    <!-- Kachel-Aufteilung (4 Paneele) -->
+    <!-- Vertikale Linie -->
+    <rect x="158" y="24" width="4" height="272" fill="#2F7FE0" opacity="0.9"/>
+    <!-- Horizontale Linie -->
+    <rect x="24" y="158" width="272" height="4" fill="#2F7FE0" opacity="0.9"/>
+
+    <!-- Leichte Innen-Schattenkante -->
+    <rect x="8" y="8" width="304" height="304" rx="32" ry="32" fill="none" stroke="#4F96EB" stroke-width="4" opacity="0.7"/>
+  </g>
+
+  <!-- Rakete im Zentrum -->
+  <g transform="translate(256,256)">
+    <!-- Flamme -->
+    <path d="M0,110 C-18,80 -18,60 0,40 C18,60 18,80 0,110 Z" fill="#FFB347"/>
+
+    <!-- Raketen-Körper -->
+    <path d="M0,-120 C-26,-80 -40,-40 -40,20 C-40,60 -20,90 0,90 C20,90 40,60 40,20 C40,-40 26,-80 0,-120 Z"
+          fill="#FFFFFF" stroke="#D0D7E5" stroke-width="4"/>
+
+    <!-- Spitze -->
+    <path d="M0,-140 C-18,-120 -24,-108 -24,-96 C-16,-100 -8,-104 0,-104 C8,-104 16,-100 24,-96 C24,-108 18,-120 0,-140 Z"
+          fill="#E4ECF8" stroke="#D0D7E5" stroke-width="3"/>
+
+    <!-- Fenster -->
+    <circle cx="0" cy="-40" r="16" fill="#0A63C9" stroke="#D0D7E5" stroke-width="3"/>
+
+    <!-- Seitenflügel -->
+    <path d="M-40,20 C-70,40 -80,70 -70,100 C-52,90 -36,76 -26,60 Z" fill="#E4ECF8" stroke="#D0D7E5" stroke-width="3"/>
+    <path d="M40,20 C70,40 80,70 70,100 C52,90 36,76 26,60 Z" fill="#E4ECF8" stroke="#D0D7E5" stroke-width="3"/>
+
+    <!-- Leichter Schatten unter der Rakete -->
+    <ellipse cx="0" cy="120" rx="46" ry="10" fill="#C5D0E5" opacity="0.45"/>
+  </g>
+</svg>

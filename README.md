@@ -1,5 +1,8 @@
 # 🚀 Windows Bootstrap
 
+![Logo](https://raw.githubusercontent.com/saigkill/WindowsBootstrapper/develop/Assets/WindowsBootstrapper.png
+)
+
 windows-bootstrap is a lightweight but powerful PowerShell framework designed to automate the complete setup of a new Windows machine.
 It installs applications, applies system tweaks, manages package sources, downloads external tools, and even updates itself automatically.
 
@@ -13,9 +16,10 @@ Perfect for developers, power users, sysadmins, and anyone who regularly provisi
 | License | ![License](https://img.shields.io/badge/License-MIT-green) |
 | Status | ![Status](https://img.shields.io/badge/Status-Active-success) |
 | Maintained | ![Maintained](https://img.shields.io/badge/Maintained-Yes-brightgreen) |
-| Blog | [![Blog](https://img.shields.io/badge/Blog-Saigkill-blue)](https://saschamanns.de) |
+| Continuous Integration Dev | [![Build Status](https://dev.azure.com/saigkill/WindowsBootstrapper/_apis/build/status%2FWindowsBootstrapper-Dev?branchName=develop)](https://dev.azure.com/saigkill/WindowsBootstrapper/_build/latest?definitionId=86&branchName=develop) |
 | Bugreports | [![GitHub issues](https://img.shields.io/github/issues/saigkill/WindowsBootstrapper)](https://github.com/saigkill/WindowsBootstrapper/issues) |
 | Downloads all | ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/saigkill/WindowsBootstrapper/total) |
+| Blog | [![Blog](https://img.shields.io/badge/Blog-Saigkill-blue)](https://saschamanns.de) |
 
 File a bug report [on Github](https://github.com/saigkill/WindowsBootstrapper/issues).
 
