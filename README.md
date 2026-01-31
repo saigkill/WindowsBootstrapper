@@ -1,5 +1,8 @@
 # 🚀 Windows Bootstrap
 
+![Logo](https://raw.githubusercontent.com/saigkill/WindowsBootstrapper/develop/Assets/WindowsBootstrapper.png
+)
+
 windows-bootstrap is a lightweight but powerful PowerShell framework designed to automate the complete setup of a new Windows machine.
 It installs applications, applies system tweaks, manages package sources, downloads external tools, and even updates itself automatically.
 
