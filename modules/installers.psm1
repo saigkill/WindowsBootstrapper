@@ -23,11 +23,11 @@ function Install-WingetApps {
         $Config 
     )
     
-    if ([string]::IsNullOrWhiteSpace($Config.WingetApps)) { 
-        Write-Log "WingetApps not found. Skipping." "WARN" 
+    if ($Config.WingetApps.Count -eq 0) { 
+        Write-Log "WingetApps not found. Skipping." "WARN"         
         return 
     }
-    if ([string]::IsNullOrWhiteSpace($Config.StoreApps)) { 
+    if ($Config.StoreApps.Count -eq 0) { 
         Write-Log "StoreApps not found. Skipping." "WARN" 
         return 
     }
@@ -37,7 +37,13 @@ function Install-WingetApps {
         return
     }
 
-    $AllApps = $Config.WingetApps + $Config.StoreApps
+    if (-not $Config.WingetApps -eq 0){
+        $AllApps = $Config.WingetApps
+    }
+    if (-not $Config.StoreApps -eq 0){
+        $AllApps += $Config.StoreApps
+    }
+
     foreach ($app in $AllApps) {        
         Write-Log "Installing via winget: $app.id"
         try {
@@ -70,7 +76,7 @@ function Install-ChocoApps {
         [Parameter(Mandatory)] 
         $Config 
     )
-    if ([string]::IsNullOrWhiteSpace($Config.ChocoApps)) { 
+    if ($Config.ChocoApps.Count -eq 0) { 
         Write-Log "ChocoApps not found. Skipping." "WARN" 
         return 
     }
@@ -114,20 +120,23 @@ function Configure-Scoop {
         [Parameter(Mandatory)] 
         $Config 
     )
-    if ([string]::IsNullOrWhiteSpace($Config.ScoopApps)) { 
+    if ($Config.ScoopApps.Count -eq 0) { 
         Write-Log "ScoopApps not found. Skipping." "WARN" 
         return 
     }
 
-    if (-not (Test-Command "scoop")) {
-        Write-Log "Scoop not found – skipping Scoop-Configuration." 'WARN'
-        return
-    }
+    $existingBuckets = scoop bucket list | ForEach-Object { ($_ -split '\s+')[0] }
 
     foreach ($bucket in $Config.ScoopBuckets) {
+        if ($existingBuckets -contains $bucket) {
+            Write-Log "Scoop Bucket '$bucket' already added. Skipping."
+            continue
+        }
+
         Write-Log "Adding Scoop-Bucket: $bucket"
         try {
             scoop bucket add $bucket
+            Write-Log "Scoop Bucket '$bucket' added."
         }
         catch {
             Write-Log "Error while adding Buckets '$bucket': $($_.Exception.Message)" 'ERROR'
@@ -148,13 +157,12 @@ function Configure-Scoop {
 # -----------------------------
 # External Downloads (ZIP / EXE)
 # -----------------------------
-
 function Install-FromZip {
     param( 
         [Parameter(Mandatory)] 
         $Config 
     )
-    if ([string]::IsNullOrWhiteSpace($Config.ExternalZips)) { 
+    if ($Config.ExternalZips.Count -eq 0) { 
         Write-Log "ExternalZips not found. Skipping." "WARN" 
         return 
     }
@@ -196,7 +204,7 @@ function Install-FromExe {
         [Parameter(Mandatory)] 
         $Config 
     )
-    if ([string]::IsNullOrWhiteSpace($Config.ExternalExes)) { 
+    if ($Config.ExternalExes.Count -eq 0) { 
         Write-Log "ExternalExes not found. Skipping." "WARN" 
         return 
     }
