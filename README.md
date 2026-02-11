@@ -18,6 +18,8 @@ Perfect for developers, power users, sysadmins, and anyone who regularly provisi
 | Maintained | ![Maintained](https://img.shields.io/badge/Maintained-Yes-brightgreen) |
 | Continuous Integration Dev | [![Build status](https://dev.azure.com/saigkill/WindowsBootstrapper/_apis/build/status/WindowsBootstrapper-Dev)](https://dev.azure.com/saigkill/WindowsBootstrapper/_build/latest?definitionId=90) |
 | Continuous Integration Prod | [![Build status](https://dev.azure.com/saigkill/WindowsBootstrapper/_apis/build/status/WindowsBootstrapper-Prod)](https://dev.azure.com/saigkill/WindowsBootstrapper/_build/latest?definitionId=92)|
+| Deployment Github | [![Github Release](https://vsrm.dev.azure.com/saigkill/_apis/public/Release/badge/f627b49c-044e-4f2f-afbd-88581849ee26/2/2)](https://dev.azure.com/saigkill/WindowsBootstrapper/_releaseDefinition?definitionId=2)
+| Deployment Winget | [![Winget Release](https://vsrm.dev.azure.com/saigkill/_apis/public/Release/badge/f627b49c-044e-4f2f-afbd-88581849ee26/2/3)](https://dev.azure.com/saigkill/WindowsBootstrapper/_releaseDefinition?definitionId=2)
 | Bugreports | [![GitHub issues](https://img.shields.io/github/issues/saigkill/WindowsBootstrapper)](https://github.com/saigkill/WindowsBootstrapper/issues) |
 | Downloads all | ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/saigkill/WindowsBootstrapper/total) |
 | Blog | [![Blog](https://img.shields.io/badge/Blog-Saigkill-blue)](https://saschamanns.de) |
