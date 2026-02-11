@@ -1,11 +1,11 @@
-#requires -RunAsAdministrator
+##requires -RunAsAdministrator
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 Import-Module "$PSScriptRoot\modules\core.psd1" -Force
 Import-Module "$PSScriptRoot\modules\installers.psd1" -Force
 Import-Module "$PSScriptRoot\modules\tweaks.psd1" -Force
-Update-Bootstrapper
+#Update-Bootstrapper
 
 # -----------------------------
 # Configuration
@@ -47,7 +47,7 @@ function Assert-Windows11 {
 function Remove-UnneededApps {
     Write-Log "Deleting Bloatware Apps."
 
-    if ([string]::IsNullOrWhiteSpace($config.AppsToRemove)) { 
+    if ($config.AppsToRemove.Count -eq 0) { 
         Write-Log "AppsToRemove not found. Skipping." "WARN" 
         return 
     }
@@ -59,7 +59,7 @@ function Remove-UnneededApps {
             Get-AppxProvisionedPackage -Online | Where-Object {$_.PackageName -like "*$app*"} | Remove-AppxProvisionedPackage -Online
         }
         catch {
-            Write-Log "Error while deleting App '$app': $($_.Exception.Message)" 'ERROR'
+            Write-Log "App not found '$app': $($_.Exception.Message)" 'INFO'
         }
     }
 }
@@ -150,23 +150,23 @@ function Install-WSL {
 # -----------------------------
 function Check-InstallGo {
 
-    if ([string]::IsNullOrWhiteSpace($config.GoVersion)) { 
+    if ([string]::IsNullOrWhiteSpace($config.Variables.GoVersion)) { 
         Write-Log "GoVersion not found. Skipping." "WARN" 
         return 
     }
 
-    Invoke-Optional "Install Go $config.GoVersion?" {
+    Invoke-Optional "Install Go $config.Variables.GoVersion?" {
         Install-Go
     } -DefaultYes $false
 }
 
 
 function Install-Go {
-    Write-Log "Installing Go $config.GoVersion."
+    Write-Log "Installing Go $config.Variables.GoVersion."
 
     try {
-        winget install GoLang.Go.$config.GoVersion
-        Write-Log "Go $config.GoVersion installed."
+        winget install GoLang.Go.$config.Variables.GoVersion
+        Write-Log "Go $config.Variables.GoVersion installed."
     }
     catch {
         Write-Log "Error while Installation of Go: $($_.Exception.Message)" 'ERROR'
@@ -240,7 +240,7 @@ function Install-AndroidCLI {
 # Powershell Modules
 # -----------------------------
 function Import-RequiredModules {
-    if ([string]::IsNullOrWhiteSpace($config.PowershellModules)) { 
+    if ($config.PowershellModules.Count -eq 0) { 
         Write-Log "PowershellModules not found. Skipping." "WARN" 
         return 
     }
@@ -340,7 +340,7 @@ function Check-InstallDotnetTools {
 function Install-DotnetTools {
     Write-Log "Installing dotnet Tools."
     dotnet tool install --global dotnet-ef
-    if ([string]::IsNullOrWhiteSpace($config.DotnetWorkloads)) { 
+    if ($config.DotnetWorkloads.Count -eq 0) { 
         Write-Log "DotnetWorkloads not found. Skipping." "WARN" 
         return 
     }
@@ -358,8 +358,14 @@ function Install-DotnetTools {
 # ------------------------------
 # Exclude Pathes for Defender
 # -----------------------------
+function Check-ExcludeDefenderPathes {
+    Invoke-Optional "Exclude Defender Pathes? (If you use other Antivirus Software, you can skip this step)" {
+        Exclude-DefenderPathes
+    } -DefaultYes $false
+}
+
 function Exclude-DefenderPathes {
-    if ([string]::IsNullOrWhiteSpace($config.ExcludeDefenderPathes)) { 
+    if ($config.ExcludeDefenderPathes.Count -eq 0) { 
         Write-Log "ExcludeDefenderPathes not found. Skipping." "WARN" 
         return 
     }
@@ -449,20 +455,20 @@ function Check-WindowsUpdates {
 function AddPathesToPATH {
     Write-Log "Adding Pathes to PATH."
     
-    if ([string]::IsNullOrWhiteSpace($config.PathesForPATH)) { 
+    if ($config.PathesForPATH.Count -eq 0) { 
         Write-Log "PathesForPATH not found. Skipping." "WARN" 
         return 
     }
 
     try{
         foreach($path in $config.PathesForPATH){
-            Add-ToSystemPath $path
+            Add-ToPath $path
             Write-Log "Added $path to PATH"
         }
         Write-Log "Added all Pathes to PATH"
     }
     catch{
-        Write-Log "Error while checking Windows Updates: $($_.Exception.Message)" 'ERROR'
+        Write-Log "Error while adding Pathes to PATH: $($_.Exception.Message)" 'ERROR'
     }
 }
 
@@ -470,7 +476,7 @@ function AddPathesToPATH {
 # After Installation Notes
 # -----------------------------
 function Show-ManualSteps {
-    if ([string]::IsNullOrWhiteSpace($config.ManualApps)) { 
+    if ($config.ManualApps.Count -eq 0) { 
         Write-Log "ManualApps not found. Skipping." "WARN" 
         return 
     }
@@ -478,7 +484,7 @@ function Show-ManualSteps {
     Write-Log "Some steps are needed after Installation:"
     $desktop = [Environment]::GetFolderPath("Desktop") 
     $outFile = Join-Path $desktop "AfterInstallation.txt" 
-    $ManualApps | Out-File -FilePath $outFile -Encoding UTF8 
+    $config.ManualApps | Out-File -FilePath $outFile -Encoding UTF8 
     Write-Log "Check file on Desktop: $outFile"
 }
 
@@ -489,7 +495,14 @@ function Show-ManualSteps {
 Write-Log "Deploy-Script started."
 Assert-Windows11
 
+# ------------------------------
+# Cleanup
+# ------------------------------
 Invoke-Section "Removing Bloatware" { Remove-UnneededApps }
+
+# ------------------------------
+# Installations
+# ------------------------------
 Invoke-Section "Paketmanager: Scoop installing" { Install-Scoop }
 Invoke-Section "Paketmanager: Scoop configuring" { Configure-Scoop -Config $config }
 Invoke-Section "Paketmanager: Winget-Apps" { Install-WingetApps -Config $config }
@@ -497,14 +510,8 @@ Invoke-Section "Chocolatey installing" { Install-Choco }
 Invoke-Section "Paketmanager: Choco-Apps" { Install-ChocoApps -Config $config }
 Invoke-Section "External ZIP-Installations" { Install-FromZip -Config $config }
 Invoke-Section "External EXE-Installations" { Install-FromExe -Config $config }
-Invoke-Section "Computer renaming" { Check-RenameComputer }
-Invoke-Section "Disabling Sleepmode" { Disable-Sleep }
-Invoke-Section "Adding 'This PC' Desktop-Symbol" { Add-ThisPCDesktopIcon }
-Invoke-Section "Adding 'Take Ownership'" { Check-AddTakeOwnership }
 Invoke-Section "IIS Installation" { Check-IISInstallation }
 Invoke-Section "WSL Installation" { Check-WSLInstallation }
-Invoke-Section "Enabling Developermode" { Enable-DeveloperMode }
-Invoke-Section "Enabling Remote Desktop" { Check-EnableRemoteDesktop }
 Invoke-Section "Go Installation" { Check-InstallGo }
 Invoke-Section "Rust Installation" { Check-InstallRust }
 Invoke-Section "Android Studio Installation" { CheckAndroidStudio }
@@ -518,16 +525,34 @@ Invoke-Section "Installing Android CLI" { Check-InstallAndroidCLI }
 Invoke-Section "Grouping Rubbish Folders" { Remove-ShellBagByGuid }
 Invoke-Section "Applying custom Explorer-Settings" { Set-CustomExplorerSettings }
 Invoke-Section "Disable Ink Workspace" { Disable-InkWorkspace }
-Invoke-Section "Adding Defender Exclusion-Pathes" { Exclude-DefenderPathes }
+Invoke-Section "Installing Microsoft Artifacts Credential Manager" { Install-MicrosoftArtifactsCredentialManager }
+Invoke-Section "Installing Awesome Windows Terminal Fonts" { Install-AwesomeWindowsTerminalFonts }
+
+# ------------------------------
+# Tweaks and Settings
+# ------------------------------
+Invoke-Section "Disabling Sleepmode" { Disable-Sleep }
+Invoke-Section "Disabling LockScreen" { Check-DisableLockScreen }
+Invoke-Section "Adding 'This PC' Desktop-Symbol" { Add-ThisPCDesktopIcon }
+Invoke-Section "Adding 'Take Ownership'" { Check-AddTakeOwnership }
+Invoke-Section "Enabling Developermode" { Enable-DeveloperMode }
+Invoke-Section "Enabling Remote Desktop" { Check-EnableRemoteDesktop }
+Invoke-Section "Computer renaming" { Check-RenameComputer }
 Invoke-Section "Enabling Dark Mode" { Enable-DarkMode }
 Invoke-Section "Sync Time with Timeserver" { Sync-TimeWithServer }
 Invoke-Section "Enable Hardware Accelerated GPU-Scheduling" { Enable-HardwareAcceleratedGPUScheduling }
 Invoke-Section "Add 'Execute as Administrator' to Contextmenu" { Add-RunAsAdminContextMenu }
-Invoke-Section "Installing Microsoft Artifacts Credential Manager" { Install-MicrosoftArtifactsCredentialManager }
-Invoke-Section "Installing Awesome Windows Terminal Fonts" { Install-AwesomeWindowsTerminalFonts }
-Invoke-Section "Checking Windows Updates" { Check-WindowsUpdates }
-Invoke-Section "Disabling LockScreen" { Check-DisableLockScreen }
+
+# ------------------------------
+# Pathes
+# -----------------------------
+Invoke-Section "Adding Defender Exclusion-Pathes" { Check-ExcludeDefenderPathes }
 Invoke-Section "Adding needed Pathes to PATH" { AddPathesToPATH }
+
+# ------------------------------
+# Final Steps
+# ------------------------------
+Invoke-Section "Checking Windows Updates" { Check-WindowsUpdates }
 Invoke-Section "Show manual todos" { Show-ManualSteps }
 
 Read-Host -Prompt "Setup is done, restart is needed, press [ENTER] to restart computer."

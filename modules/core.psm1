@@ -45,7 +45,6 @@ function Update-Bootstrapper {
 # -----------------------------
 # Logging & Helper
 # -----------------------------
-
 function Write-Log {
     param(
         [Parameter(Mandatory)][string]$Message,
@@ -80,11 +79,11 @@ function Invoke-Optional {
         [bool]$DefaultYes = $true
     )
 
-    $default = if ($DefaultYes) { "[J/n]" } else { "[j/N]" }
+    $default = if ($DefaultYes) { "[Y/N]" } else { "[y/n]" }
     $answer = Read-Host "$Question $default"
 
     if ([string]::IsNullOrWhiteSpace($answer)) {
-        $answer = if ($DefaultYes) { "j" } else { "n" }
+        $answer = if ($DefaultYes) { "y" } else { "n" }
     }
 
     switch ($answer.ToLower()) {

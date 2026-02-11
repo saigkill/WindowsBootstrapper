@@ -1,7 +1,6 @@
 # -----------------------------
 # Disable Sleep
 # -----------------------------
-
 function Disable-Sleep {
     Write-Log "Disable Sleepmode."
 
@@ -19,7 +18,6 @@ function Disable-Sleep {
 # -----------------------------
 # Add "This PC" Desktop Icon
 # -----------------------------
-
 function Add-ThisPCDesktopIcon {
     Write-Log "Add 'This PC' Desktop-Symbol."
 
@@ -49,7 +47,13 @@ function Enable-DeveloperMode {
 
     try {
         $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
-        New-Item -Path $regPath -Force | Out-Null
+        try{
+            New-Item -Path $regPath -Force | Out-Null
+        }
+        catch {
+            Write-Debug "Registry key already exists or cannot be created, continuing..."
+        }
+        
         Set-ItemProperty -Path $regPath -Name "AllowDevelopmentWithoutDevLicense" -Value 1 -Type DWord
         Write-Log "Developer Mode enabled."
     }
@@ -73,7 +77,6 @@ function Enable-RemoteDesktop {
     try {
         Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp\" -Name "UserAuthentication" -Value 1
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         Write-Log "Remote Desktop enabled."
     }
     catch {
@@ -111,22 +114,34 @@ function Remove-ShellBagByGuid {
 # Custom Explorer Settings
 # -----------------------------
 function Set-CustomExplorerSettings {
-    
+
     Write-Log "Applying custom Explorer-Settings"
 
+    # Key anlegen, Fehler ignorieren
     try {
-        New-Item -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Force | Out-Null
-        Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name HideFileExt      -Value 0 -Type DWord
-        Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name AutoCheckSelect  -Value 0 -Type DWord
-        Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name LaunchTo         -Value 1 -Type DWord
-        Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name ShowSuperHidden  -Value 1 -Type DWord
-        Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name Hidden           -Value 1 -Type DWord
+        New-Item -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -ErrorAction Stop | Out-Null
+    }
+    catch {
+        # Nur loggen, wenn du willst – aber kein Abbruch
+        Write-Log "Registry key already exists or cannot be created, continuing..."
+    }
+
+    try {
+        $path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+
+        Set-ItemProperty -Path $path -Name HideFileExt     -Value 0 -Type DWord
+        Set-ItemProperty -Path $path -Name AutoCheckSelect -Value 0 -Type DWord
+        Set-ItemProperty -Path $path -Name LaunchTo        -Value 1 -Type DWord
+        Set-ItemProperty -Path $path -Name ShowSuperHidden -Value 1 -Type DWord
+        Set-ItemProperty -Path $path -Name Hidden          -Value 1 -Type DWord
+
         Write-Log "Applied Explorer-Settings"
     }
     catch {
         Write-Log "Error while applying Explorer-Setting: $($_.Exception.Message)" 'ERROR'
     }
 }
+
 
 # ------------------------------
 # Disable Lock Screen
@@ -140,7 +155,12 @@ function Check-DisableLockScreen {
 function DisableLockScreen {
     Write-Log "Disabling LockScreen"
     try{
-        New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization" -Force | Out-Null
+        try{
+            New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization" -Force | Out-Null
+        }
+        catch{
+            Write-Debug "Registry key already exists or cannot be created, continuing..."
+        }
         Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization" -Name NoLockScreen 1
     }
     catch{
@@ -156,7 +176,12 @@ function Disable-InkWorkspace {
 
     try {
         $regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Pen"
-        New-Item -Path $regPath -Force | Out-Null
+        try{
+            New-Item -Path $regPath -Force | Out-Null
+        }
+        catch {
+            Write-Debug "Registry key already exists or cannot be created, continuing..."
+        }
         Set-ItemProperty -Path $regPath -Name "PenWorkspaceButtonDesiredVisibility" -Value 0 -Type DWord
         Write-Log "Ink Workspace disabled."
     }
@@ -173,7 +198,12 @@ function Enable-DarkMode {
 
     try {
         $regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
-        New-Item -Path $regPath -Force | Out-Null
+        try{
+            New-Item -Path $regPath -Force | Out-Null
+        }
+        catch {
+            Write-Debug "Registry key already exists or cannot be created, continuing..."
+        }
         Set-ItemProperty -Path $regPath -Name "AppsUseLightTheme" -Value 0 -Type DWord
         Set-ItemProperty -Path $regPath -Name "SystemUsesLightTheme" -Value 0 -Type DWord
         Write-Log "Dark Mode enabled."
@@ -191,7 +221,12 @@ function Enable-HardwareAcceleratedGPUScheduling {
 
     try {
         $regPath = "HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"
-        New-Item -Path $regPath -Force | Out-Null
+        try{
+            New-Item -Path $regPath -Force | Out-Null
+        }
+        catch {
+            Write-Debug "Registry key already exists or cannot be created, continuing..."
+        }
         Set-ItemProperty -Path $regPath -Name "HwSchMode" -Value 2 -Type DWord
         Write-Log "Enabled Hardware-Acclerated GPU-Scheduling."
     }
@@ -208,11 +243,21 @@ function Add-RunAsAdminContextMenu {
 
     try {
         $regPath = "HKCR:\*\shell\RunAsAdmin"
-        New-Item -Path $regPath -Force | Out-Null
+        try{
+            New-Item -Path $regPath -Force | Out-Null
+        }
+        catch {
+            Write-Debug "Registry key already exists or cannot be created, continuing..."
+        }
         Set-ItemProperty -Path $regPath -Name "HasLUAShield" -Value "" -Type String
         Set-ItemProperty -Path $regPath -Name "(Default)" -Value "Als Administrator ausführen" -Type String
         $commandPath = Join-Path $regPath "command"
-        New-Item -Path $commandPath -Force | Out-Null
+        try{
+            New-Item -Path $commandPath -Force | Out-Null
+        }
+        catch {
+            Write-Debug "Registry key already exists or cannot be created, continuing..."
+        }
         $ps = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
         Set-ItemProperty -Path $commandPath -Name "(Default)" -Value "$ps -Command `"Start-Process '%1' -Verb runAs`"" -Type String
         Write-Log "''Execute as Administrator' added."

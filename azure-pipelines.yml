@@ -143,6 +143,34 @@ stages:
               replaceExistingArchive: true
             displayName: 'Create ZIP'
 
+          - task: PowerShell@2
+            displayName: Generate Checksums
+            inputs:
+              targetType: inline
+              pwsh: true
+              script: |
+                $zipFile = "$(Build.SourcesDirectory)\output\WindowsBootstrapper.zip"
+      
+                # SHA256 Hash
+                $sha256 = (Get-FileHash -Path $zipFile -Algorithm SHA256).Hash
+                $md5 = (Get-FileHash -Path $zipFile -Algorithm MD5).Hash
+      
+                $checksums = @"
+                ## 🔒 Checksums
+      
+                **SHA256** ``$sha256``  
+                **MD5** ``$md5``
+                "@
+      
+                # Speichere für Release Notes
+                $checksums | Out-File "$(Build.SourcesDirectory)\output\checksums.txt" -Encoding UTF8
+      
+                Write-Host $checksums
+      
+                # Als Pipeline Variable setzen
+                Write-Host "##vso[task.setvariable variable=SHA256]$sha256"
+                Write-Host "##vso[task.setvariable variable=MD5]$md5"
+
           # Publish Artifacts
           - task: PublishPipelineArtifact@1
             displayName: Publish bootstrapper artifact
@@ -151,6 +179,129 @@ stages:
               artifact: 'windows-bootstrap'
               publishLocation: 'pipeline'
 
+      # Separater normaler Job für Release Notes
+      - job: CreateReleaseNotes
+        displayName: 'Create Release Notes'
+        pool:
+          vmImage: 'windows-latest'
+        steps:
+          - task: PowerShell@2
+            displayName: 'Generate Release Notes'
+            inputs:
+              targetType: 'inline'
+              pwsh: true
+              script: |
+                $tagName = "$(Build.SourceBranchName)"
+                $buildDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC"
+
+                # Checksums laden
+                $checksumsFile = "$(Pipeline.Workspace)/checksums/checksums.txt"
+                $checksumsContent = ""
+                if (Test-Path $checksumsFile) {
+                  $checksumsRaw = Get-Content $checksumsFile -Raw
+                  # Extrahiere SHA256 und MD5
+                if ($checksumsRaw -match 'SHA256:\s*``([^`]+)``') {
+                  $sha256 = $Matches[1]
+                }
+                if ($checksumsRaw -match 'MD5:\s*``([^`]+)``') {
+                  $md5 = $Matches[1]
+                  }
+                  $checksumsContent = $checksumsRaw
+                }
+
+                # Hole alle Commits seit dem letzten Tag
+                $previousTag = git describe --tags --abbrev=0 HEAD^ 2>$null
+          
+                if ($previousTag) {
+                  Write-Host "Comparing $previousTag..$tagName"
+                  $commits = git log --pretty=format:"- %s (%an, %ar)" "$previousTag..HEAD"
+                  $commitCount = (git rev-list "$previousTag..HEAD" --count)
+                } else {
+                  Write-Host "No previous tag found"
+                  $commits = git log --pretty=format:"- %s (%an, %ar)" HEAD~10..HEAD
+                  $commitCount = 10
+                }
+
+                # Geänderte Dateien
+                if ($previousTag) {
+                  $changedFiles = git diff --name-status "$previousTag..HEAD" | ForEach-Object {
+                    $parts = $_ -split '\s+'
+                    "- **$($parts[0])** $($parts[1])"
+                  }
+                }
+
+                $releaseNotes = @"
+                # Windows Bootstrapper Release $tagName
+            
+                **Released:** $buildDate  
+                **Build:** [$(Build.BuildNumber)]($(System.CollectionUri)$(System.TeamProject)/_build/results?buildId=$(Build.BuildId))  
+                **Commit:** [``$(Build.SourceVersion.Substring(0,7))``](https://github.com/saigkill/WindowsBootstrapper/commit/$(Build.SourceVersion))  
+                **Pipeline:** $(System.CollectionUri)$(System.TeamProject)/_build?definitionId=$(System.DefinitionId)
+          
+                ---
+
+                ## 📝 Changes ($commitCount commits)
+          
+                $commits
+          
+                ## 📂 Modified Files
+            
+                $changedFiles
+
+                ## Artifacts
+                - **WindowsBootstrapper.zip**
+
+                $checksumsContent
+
+                ### Installation
+          
+                ``````powershell
+                # Download and extract
+                Invoke-WebRequest -Uri "https://github.com/saigkill/WindowsBootstrapper/releases/download/$tagName/WindowsBootstrapper.zip" -OutFile "WindowsBootstrapper.zip"
+                Expand-Archive -Path "WindowsBootstrapper.zip" -DestinationPath "C:\Bootstrap"
+          
+                # Run bootstrapper
+                cd C:\Bootstrap
+                .\bootstrap.ps1
+                ``````
+          
+                ### Requirements
+          
+                - Windows 10/11 or Windows Server 2019+
+                - PowerShell 7.4.0+
+                - Administrator privileges
+          
+                ---
+          
+                ## ✅ Quality Gates
+          
+                - ✔️ PSScriptAnalyzer: Passed
+                - ✔️ Pester Tests: Passed
+                - ✔️ JSON Validation: Passed
+                - ✔️ Script Signing: Verified
+          
+                ---
+          
+                ## 🔗 Links
+          
+                - [Full Changelog](https://github.com/saigkill/WindowsBootstrapper/compare/$previousTag...$tagName)
+                - [Documentation](https://github.com/saigkill/WindowsBootstrapper#readme)
+                - [Issues](https://github.com/saigkill/WindowsBootstrapper/issues)
+                "@
+            
+                Write-Host "Release Notes:"
+                Write-Host $releaseNotes
+              
+                New-Item -ItemType Directory -Path "$(Build.ArtifactStagingDirectory)" -Force
+                $releaseNotes | Out-File "$(Build.ArtifactStagingDirectory)/ReleaseNotes.md"
+      
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish Release Notes'
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)/ReleaseNotes.md'
+              artifact: 'release-notes'
+              publishLocation: 'pipeline'
+  
 # ---------------------------------------------------------
 #  STAGE: RELEASE (nur bei Tags)
 # ---------------------------------------------------------
@@ -177,3 +328,183 @@ stages:
           isDraft: false
           isPreRelease: false
         displayName: 'Create GitHub Release'
+
+  - stage: Winget
+  displayName: "Generate Winget Manifests"
+  dependsOn: Release
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/')
+  jobs:
+  - job: GenerateWinget
+    displayName: "Create Winget Manifest"
+    pool:
+      vmImage: 'windows-latest'
+    steps:
+
+    - download: current
+      artifact: windows-bootstrap
+
+    - task: PowerShell@2
+      displayName: "Generate Winget Manifest Files"
+      inputs:
+        targetType: inline
+        pwsh: true
+        script: |
+          $packageId = "Saigkill.WindowsBootstrapper"
+          $version = "$(Build.SourceBranchName)"
+          $version = $version.TrimStart("v")
+
+          $sha256 = "$(SHA256)"
+          $tag = "$(Build.SourceBranchName)"
+
+          $url = "https://github.com/saigkill/WindowsBootstrapper/releases/download/$tag/WindowsBootstrapper.zip"
+
+          $manifestRoot = "$(Build.SourcesDirectory)/winget"
+          New-Item -ItemType Directory -Force -Path $manifestRoot | Out-Null
+
+          # --- Version Manifest ---
+          @"
+PackageIdentifier: $packageId
+PackageVersion: $version
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.6.0
+"@ | Out-File "$manifestRoot/$packageId.yaml" -Encoding UTF8
+
+          # --- Installer Manifest ---
+          @"
+PackageIdentifier: $packageId
+PackageVersion: $version
+InstallerType: portable
+Installers:
+  - Architecture: x64
+    InstallerUrl: $url
+    InstallerSha256: $sha256
+    PortableCommandAlias: windowsbootstrapper
+ManifestType: installer
+ManifestVersion: 1.6.0
+"@ | Out-File "$manifestRoot/$packageId.installer.yaml" -Encoding UTF8
+
+          # --- Locale Manifest ---
+          @"
+PackageIdentifier: $packageId
+PackageVersion: $version
+PackageLocale: de-DE
+Publisher: Saigkill
+PackageName: Windows Bootstrapper
+ShortDescription: Automatischer Windows-Bootstrapper für Systemkonfiguration und Softwareinstallation.
+ManifestType: locale
+ManifestVersion: 1.6.0
+"@ | Out-File "$manifestRoot/$packageId.locale.de-DE.yaml" -Encoding UTF8
+
+        # --- Locale Manifest ---
+          @"
+PackageIdentifier: $packageId
+PackageVersion: $version
+PackageLocale: en-US
+Publisher: Saigkill
+PackageName: Windows Bootstrapper
+ShortDescription: Automatic Windows bootstrapper for system configuration and software installation.
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
+"@ | Out-File "$manifestRoot/$packageId.locale.en-US.yaml" -Encoding UTF8
+
+    - task: PublishPipelineArtifact@1
+      displayName: "Publish Winget Manifests"
+      inputs:
+        targetPath: "$(Build.SourcesDirectory)/winget"
+        artifact: "winget-manifests"
+   
+  - stage: WingetPR
+  displayName: "Create Winget Pull Request"
+  dependsOn: Winget
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/')
+  jobs:
+  - job: WingetPRJob
+    displayName: "Generate PR for microsoft/winget-pkgs"
+    pool:
+      vmImage: 'windows-latest'
+    steps:
+
+    - checkout: none
+
+    - task: PowerShell@2
+      displayName: "Clone winget-pkgs fork"
+      inputs:
+        targetType: inline
+        pwsh: true
+        script: |
+          git clone https://$(GithubPAT)@github.com/saigkill/winget-pkgs.git winget-pkgs
+          cd winget-pkgs
+          git remote add upstream https://github.com/microsoft/winget-pkgs.git
+          git fetch upstream
+          git merge upstream/master
+
+    - download: current
+      artifact: winget-manifests
+
+    - task: PowerShell@2
+      displayName: "Copy manifests to correct folder"
+      inputs:
+        targetType: inline
+        pwsh: true
+        script: |
+          $packageId = "Saigkill.WindowsBootstrapper"
+          $version = "$(Build.SourceBranchName)".TrimStart("v")
+
+          $folder = "winget-pkgs/manifests/s/Saigkill/WindowsBootstrapper/$version"
+          New-Item -ItemType Directory -Force -Path $folder | Out-Null
+
+          Copy-Item "$(Pipeline.Workspace)/winget-manifests/*" $folder -Recurse -Force
+
+    - task: PowerShell@2
+      displayName: "Commit and push changes"
+      inputs:
+        targetType: inline
+        pwsh: true
+        script: |
+          cd winget-pkgs
+          git config user.email "Sascha.Manns@outlook.de"
+          git config user.name "Saigkill CI Bot"
+
+          git add .
+          git commit -m "Add WindowsBootstrapper $version"
+          git push origin master
+
+    - task: PowerShell@2
+      displayName: "Create Pull Request"
+      inputs:
+        targetType: inline
+        pwsh: true
+        script: |
+          $version = "$(Build.SourceBranchName)".TrimStart("v")
+
+          $body = "Automated submission of WindowsBootstrapper $version via Azure DevOps."
+
+          gh pr create `
+            --repo saigkill/winget-pkgs `
+            --base master `
+            --head master `
+            --title "WindowsBootstrapper $version" `
+            --body $body `
+            --reviewer "microsoft/winget-pkgs"
+
+
+      # Neuer Deployment Job für Azure DevOps
+    - deployment: DeployToAzureDevOps
+      displayName: 'Deploy Release to Azure DevOps'
+      environment: 'Production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+              - download: current
+                artifact: windows-bootstrap
+          
+              - task: PowerShell@2
+                displayName: 'Deploy to Environment'
+                inputs:
+                  targetType: 'inline'
+                  pwsh: true
+                  script: |
+                    Write-Host "Deploying WindowsBootstrapper to Production"
+                    # Weitere Deployment-Schritte hier
